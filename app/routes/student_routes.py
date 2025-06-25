@@ -1,46 +1,38 @@
-# app/routes/student_routes.py
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from app.database import SessionLocal
-from app.models import Student
-from typing import List
+from .. import models, schemas
+from ..database import get_db
 
 router = APIRouter()
 
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-@router.post("/")
-def create_student(student: dict, db: Session = Depends(get_db)):
-    db_student = Student(**student)
+@router.post("/students/")
+def create_student(student: schemas.StudentCreate, db: Session = Depends(get_db)):
+    db_student = models.Student(**student.dict())
     db.add(db_student)
     db.commit()
     db.refresh(db_student)
     return db_student
 
-@router.get("/", response_model=List[dict])
-def get_students(db: Session = Depends(get_db)):
-    return db.query(Student).all()
-
-@router.put("/{student_id}")
-def update_student(student_id: int, student: dict, db: Session = Depends(get_db)):
-    db_student = db.query(Student).filter(Student.id == student_id).first()
+@router.put("/students/{student_id}")
+def update_student(student_id: int, student: schemas.StudentUpdate, db: Session = Depends(get_db)):
+    db_student = db.query(models.Student).filter(models.Student.id == student_id).first()
     if not db_student:
         raise HTTPException(status_code=404, detail="Student not found")
-    for key, value in student.items():
+    for key, value in student.dict(exclude_unset=True).items():
         setattr(db_student, key, value)
     db.commit()
     return db_student
 
-@router.delete("/{student_id}")
+@router.delete("/students/{student_id}")
 def delete_student(student_id: int, db: Session = Depends(get_db)):
-    db_student = db.query(Student).filter(Student.id == student_id).first()
+    db_student = db.query(models.Student).filter(models.Student.id == student_id).first()
     if not db_student:
         raise HTTPException(status_code=404, detail="Student not found")
     db.delete(db_student)
     db.commit()
-    return {"detail": "Deleted"}
+    return {"message": "Student deleted"}
+
+@router.get("/classes/{class_id}/students")
+def get_students_in_class(class_id: int, db: Session = Depends(get_db)):
+    students = db.query(models.Student).filter(models.Student.class_id == class_id).all()
+    return students
