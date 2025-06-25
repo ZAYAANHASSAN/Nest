@@ -10,6 +10,7 @@ app = FastAPI()
 @app.get("/")
 def read_root():
     return {"message": "Hello World!"}
+
 app.include_router(student_routes.router)
 app.include_router(class_routes.router)
 
